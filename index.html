@@ -13,7 +13,12 @@
   body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
   header{background:var(--brand);color:#fff;padding:14px 16px;
     padding-top:max(14px,env(safe-area-inset-top));position:sticky;top:0;z-index:20}
-  header .wrap{max-width:1080px;margin:0 auto;display:flex;align-items:baseline;gap:10px}
+  header .wrap{max-width:1080px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px}
+  header .htxt{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;min-width:0}
+  .lang{flex:none;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;
+    padding:6px 14px;border-radius:999px;font-size:13px;font-family:inherit;cursor:pointer}
+  .lang:hover{background:rgba(255,255,255,.25)}
+  .lang.busy{opacity:.6;cursor:wait}
   header h1{font-size:17px;font-weight:700}
   header span{font-size:11.5px;opacity:.75}
 
@@ -101,7 +106,10 @@
 </head>
 <body>
 
-<header><div class="wrap"><h1>🛒 Southampton Student Marketplace</h1><span>Second-hand finds from our groups</span></div></header>
+<header><div class="wrap">
+  <div class="htxt"><h1 id="hTitle">🛒 Southampton Student Marketplace</h1><span id="hSub">Second-hand finds from our groups</span></div>
+  <button class="lang" id="langBtn" onclick="toggleLang()">中文</button>
+</div></header>
 <div class="sbar"><input id="q" type="search" placeholder="🔍 Search items…" autocomplete="off"></div>
 <div class="chips" id="chips"></div>
 <div id="status"></div>
@@ -151,6 +159,78 @@ const DEMO = [
  {name:"Ergonomic Office Chair",desc:"Adjustable headrest and armrests.",price:20,contact:"WeChat demo123",icon:"💺",photos:[]}
 ];
 
+/* ---------- 语言 / Language ---------- */
+let LANG="en";
+const T={
+  en:{title:"🛒 Southampton Student Marketplace", sub:"Second-hand finds from our groups",
+      search:"🔍 Search items…", all:"All", btn:"中文",
+      empty:"Nothing for sale right now — check back soon!", noMatch:"No items match your search",
+      contact:"Interested? Contact seller:", ask:"Ask in the group chat for details",
+      posted:"Posted", item:"item", items:"items", live:"updates live",
+      loading:"Loading…", translating:"Translating…"},
+  zh:{title:"🛒 南安普顿学生二手市集", sub:"来自群里的二手好物",
+      search:"🔍 搜索物品…", all:"全部", btn:"EN",
+      empty:"暂时没有在卖的东西，过几天再来看看～", noMatch:"没有找到符合的物品",
+      contact:"想要？联系卖家：", ask:"详情请在群里问卖家",
+      posted:"发布于", item:"件", items:"件", live:"实时更新",
+      loading:"加载中…", translating:"翻译中…"}
+};
+const t=k=>T[LANG][k];
+
+const TCACHE={};           // 原文 -> 中文
+async function trOne(txt){
+  if(!txt) return txt;
+  if(TCACHE[txt]) return TCACHE[txt];
+  try{
+    const r=await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q="+encodeURIComponent(txt));
+    const j=await r.json();
+    const out=(j[0]||[]).map(x=>x[0]).join("");
+    if(out){TCACHE[txt]=out;return out}
+  }catch(e){}
+  try{
+    const r=await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(txt)+"&langpair=en|zh-CN");
+    const j=await r.json();
+    const out=j?.responseData?.translatedText;
+    if(out){TCACHE[txt]=out;return out}
+  }catch(e){}
+  return txt;
+}
+async function translateItems(){
+  const jobs=[];
+  ITEMS.forEach(i=>{
+    ["name","desc","cat"].forEach(k=>{
+      const v=i[k];
+      if(v && !/^[\d\s\p{P}]*$/u.test(v) && i["_zh_"+k]===undefined){
+        jobs.push(trOne(v).then(z=>{i["_zh_"+k]=z}));
+      }
+    });
+  });
+  if(jobs.length) await Promise.all(jobs);
+}
+/* 取显示值：中文模式优先用译文 */
+const dv=(i,k)=>(LANG==="zh" && i["_zh_"+k])?i["_zh_"+k]:i[k];
+
+async function toggleLang(){
+  const btn=$("langBtn");
+  if(LANG==="en"){
+    btn.classList.add("busy"); btn.disabled=true;
+    $("status").textContent=T.zh.translating;
+    await translateItems();
+    LANG="zh";
+    btn.classList.remove("busy"); btn.disabled=false;
+    $("status").textContent="";
+  }else{ LANG="en"; }
+  applyLang(); render();
+}
+function applyLang(){
+  document.documentElement.lang = LANG==="zh"?"zh-CN":"en";
+  $("hTitle").textContent=t("title");
+  $("hSub").textContent=t("sub");
+  $("q").placeholder=t("search");
+  $("langBtn").textContent=t("btn");
+  document.title=LANG==="zh"?"南安普顿学生二手市集":"Southampton Student Marketplace";
+}
+
 const $=id=>document.getElementById(id);
 let ITEMS=[], curr=null;
 function srcClass(v){v=String(v).toLowerCase();return v.includes("whatsapp")?"wa":(v.includes("wechat")||v.includes("微信"))?"wx":""}
@@ -163,7 +243,7 @@ async function load(){
     $("status").textContent="⚠️ Preview mode: showing demo data (Airtable not connected)";
     render(); return;
   }
-  $("status").textContent="Loading…";
+  $("status").textContent=t("loading");
   try{
     let records=[], offset="";
     do{
@@ -199,8 +279,11 @@ let VIEW=[], CAT="";
 function renderChips(){
   const cats=[...new Set(ITEMS.map(i=>i.cat).filter(Boolean))].sort();
   $("chips").innerHTML=cats.length
-    ? [`<button class="chip ${CAT?"":"on"}" onclick="pickCat('')">All</button>`]
-        .concat(cats.map(c=>`<button class="chip ${CAT===c?"on":""}" onclick="pickCat('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`)).join("")
+    ? [`<button class="chip ${CAT?"":"on"}" onclick="pickCat('')">${t("all")}</button>`]
+        .concat(cats.map(c=>{
+          const label=LANG==="zh"?(ITEMS.find(i=>i.cat===c)?.["_zh_cat"]||c):c;
+          return `<button class="chip ${CAT===c?"on":""}" onclick="pickCat('${esc(c).replace(/'/g,"\\'")}')">${esc(label)}</button>`;
+        })).join("")
     : "";
 }
 function pickCat(c){ CAT=(CAT===c)?"":c; render(); }
@@ -208,7 +291,7 @@ function render(){
   const q=($("q").value||"").trim().toLowerCase();
   VIEW=ITEMS.filter(i=>
     (!CAT || i.cat===CAT) &&
-    (!q || [i.name,i.desc,i.cat,i.src,i.contact].join(" ").toLowerCase().includes(q)));
+    (!q || [i.name,i.desc,i.cat,i.src,i.contact,i._zh_name,i._zh_desc,i._zh_cat].filter(Boolean).join(" ").toLowerCase().includes(q)));
   renderChips();
   $("grid").innerHTML=VIEW.length?VIEW.map((i,idx)=>`
     <div class="card" onclick="openDetail(${idx})">
@@ -217,25 +300,25 @@ function render(){
         ${i.photos.length>1?`<span class="badge">📷 ${i.photos.length}</span>`:""}
       </div>
       <div class="cb">
-        <div class="t">${esc(i.name)}</div>
-        ${i.desc?`<div class="d">${esc(i.desc)}</div>`:""}
-        ${(i.cat||i.src)?`<div class="tags">${i.cat?`<span class="tag">${esc(i.cat)}</span>`:""}${i.src?`<span class="tag ${srcClass(i.src)}">${esc(i.src)}</span>`:""}</div>`:""}
+        <div class="t">${esc(dv(i,"name"))}</div>
+        ${i.desc?`<div class="d">${esc(dv(i,"desc"))}</div>`:""}
+        ${(i.cat||i.src)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span>`:""}${i.src?`<span class="tag ${srcClass(i.src)}">${esc(i.src)}</span>`:""}</div>`:""}
         <div class="p"><small>£</small>${Number(i.price).toLocaleString()}</div>
         ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
         ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
       </div>
-    </div>`).join(""):`<div class="empty">${ITEMS.length?"No items match your search":"Nothing for sale right now — check back soon!"}</div>`;
-  $("foot").textContent=VIEW.length?`${VIEW.length} item${VIEW.length>1?"s":""} · updates live`:"";
+    </div>`).join(""):`<div class="empty">${ITEMS.length?t("noMatch"):t("empty")}</div>`;
+  $("foot").textContent=VIEW.length?`${VIEW.length} ${VIEW.length>1?t("items"):t("item")} · ${t("live")}`:"";
 }
 
 function openDetail(idx){
   curr=VIEW[idx];
-  $("dTitle").textContent=curr.name;
+  $("dTitle").textContent=dv(curr,"name");
   $("dPrice").innerHTML=`<small>£</small>${Number(curr.price).toLocaleString()}`;
-  $("dName").textContent=curr.name;
-  $("dDesc").textContent=curr.desc||"";
-  const meta=[curr.cat,curr.src,curr.date?`Posted ${curr.date}`:""].filter(Boolean).join(" · ");
-  $("dContact").innerHTML=(meta?`<div style="margin-bottom:8px;font-size:12.5px;color:var(--muted)">${esc(meta)}</div>`:"")+(curr.contact?`Interested? Contact seller: <b>${esc(curr.contact)}</b>`:`Ask in the group chat for details`);
+  $("dName").textContent=dv(curr,"name");
+  $("dDesc").textContent=dv(curr,"desc")||"";
+  const meta=[dv(curr,"cat"),curr.src,curr.date?`${t("posted")} ${curr.date}`:""].filter(Boolean).join(" · ");
+  $("dContact").innerHTML=(meta?`<div style="margin-bottom:8px;font-size:12.5px;color:var(--muted)">${esc(meta)}</div>`:"")+(curr.contact?`${t("contact")} <b>${esc(curr.contact)}</b>`:t("ask"));
   $("dSwiper").innerHTML=curr.photos.length
     ? curr.photos.map(p=>`<div class="slide"><img src="${p.full}" alt=""></div>`).join("")
     : `<div class="slide"><div class="emoji">${curr.icon}</div></div>`;
