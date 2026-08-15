@@ -54,6 +54,13 @@
   .dtop button{border:none;background:#f1eff3;width:34px;height:34px;border-radius:50%;
     font-size:16px;cursor:pointer;flex:none}
   .dtop .dt{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .swrap{position:relative}
+  .snav{position:absolute;top:50%;transform:translateY(-50%);border:none;width:40px;height:40px;
+    border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:20px;cursor:pointer;z-index:5;
+    display:flex;align-items:center;justify-content:center}
+  .snav:hover{background:rgba(0,0,0,.65)}
+  .snav.prev{left:12px}.snav.next{right:12px}
+  .sdots i{cursor:pointer}
   .swiper{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;background:#171319;
     -webkit-overflow-scrolling:touch}
   .swiper::-webkit-scrollbar{display:none}
@@ -84,7 +91,11 @@
 
 <div id="detail">
   <div class="dtop"><button onclick="closeDetail()">✕</button><div class="dt" id="dTitle"></div></div>
-  <div class="swiper" id="dSwiper"></div>
+  <div class="swrap">
+    <div class="swiper" id="dSwiper"></div>
+    <button class="snav prev" id="sPrev" onclick="slideBy(-1)">‹</button>
+    <button class="snav next" id="sNext" onclick="slideBy(1)">›</button>
+  </div>
   <div class="sdots" id="dDots"></div>
   <div class="dbody">
     <div class="dprice" id="dPrice"></div>
@@ -189,10 +200,22 @@ function openDetail(idx){
     ? curr.photos.map(p=>`<div class="slide"><img src="${p.full}" alt=""></div>`).join("")
     : `<div class="slide"><div class="emoji">${curr.icon}</div></div>`;
   const n=Math.max(curr.photos.length,1);
-  $("dDots").innerHTML=n>1?Array.from({length:n},(_,k)=>`<i class="${k?'':'on'}"></i>`).join(""):"";
+  $("dDots").innerHTML=n>1?Array.from({length:n},(_,k)=>`<i class="${k?'':'on'}" onclick="slideTo(${k})"></i>`).join(""):"";
+  $("sPrev").style.display=$("sNext").style.display=(curr.photos.length>1)?"flex":"none";
   $("dSwiper").scrollLeft=0;
   $("detail").classList.add("open");
   document.body.style.overflow="hidden";
+}
+function slideBy(d){
+  const sw=$("dSwiper");
+  const n=Math.max(curr?curr.photos.length:1,1);
+  let k=Math.round(sw.scrollLeft/sw.clientWidth)+d;
+  k=(k+n)%n;
+  sw.scrollTo({left:k*sw.clientWidth,behavior:"smooth"});
+}
+function slideTo(k){
+  const sw=$("dSwiper");
+  sw.scrollTo({left:k*sw.clientWidth,behavior:"smooth"});
 }
 function closeDetail(){
   $("detail").classList.remove("open");
@@ -203,7 +226,13 @@ $("dSwiper").addEventListener("scroll",()=>{
   const k=Math.round(sw.scrollLeft/sw.clientWidth);
   [...$("dDots").children].forEach((d,j)=>d.classList.toggle("on",j===k));
 });
-document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape")closeDetail();
+  if($("detail").classList.contains("open")&&curr&&curr.photos.length>1){
+    if(e.key==="ArrowLeft")slideBy(-1);
+    if(e.key==="ArrowRight")slideBy(1);
+  }
+});
 
 load();
 </script>
