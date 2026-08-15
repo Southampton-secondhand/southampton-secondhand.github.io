@@ -101,6 +101,11 @@
   .dcontact{margin-top:18px;background:#faf7f9;border:1px solid var(--line);border-radius:12px;
     padding:13px 15px;font-size:14px}
   .dcontact b{color:var(--brand)}
+  .drow{display:flex;gap:10px;padding:6px 0;font-size:14px;align-items:baseline}
+  .drow+.drow{border-top:1px solid var(--line)}
+  .dk{flex:none;width:88px;color:var(--muted);font-size:12.5px}
+  .dvv{color:var(--text);word-break:break-word}
+  .dvv.hi{color:var(--brand);font-weight:700}
   footer{text-align:center;color:var(--muted);font-size:11.5px;padding:0 16px 26px;column-span:all}
 </style>
 </head>
@@ -166,13 +171,15 @@ const T={
       search:"🔍 Search items…", all:"All", btn:"中文",
       empty:"Nothing for sale right now — check back soon!", noMatch:"No items match your search",
       contact:"Interested? Contact seller:", ask:"Ask in the group chat for details",
-      posted:"Posted", item:"item", items:"items", live:"updates live",
+      posted:"Posted", lCat:"Category", lSrc:"Source", lContact:"Contact",
+      item:"item", items:"items", live:"updates live",
       loading:"Loading…", translating:"Translating…"},
   zh:{title:"🛒 南安普顿学生二手市集", sub:"来自群里的二手好物",
       search:"🔍 搜索物品…", all:"全部", btn:"EN",
       empty:"暂时没有在卖的东西，过几天再来看看～", noMatch:"没有找到符合的物品",
       contact:"想要？联系卖家：", ask:"详情请在群里问卖家",
-      posted:"发布于", item:"件", items:"件", live:"实时更新",
+      posted:"发布于", lCat:"分类", lSrc:"来源", lContact:"联系方式",
+      item:"件", items:"件", live:"实时更新",
       loading:"加载中…", translating:"翻译中…"}
 };
 const t=k=>T[LANG][k];
@@ -317,8 +324,14 @@ function openDetail(idx){
   $("dPrice").innerHTML=`<small>£</small>${Number(curr.price).toLocaleString()}`;
   $("dName").textContent=dv(curr,"name");
   $("dDesc").textContent=dv(curr,"desc")||"";
-  const meta=[dv(curr,"cat"),curr.src,curr.date?`${t("posted")} ${curr.date}`:""].filter(Boolean).join(" · ");
-  $("dContact").innerHTML=(meta?`<div style="margin-bottom:8px;font-size:12.5px;color:var(--muted)">${esc(meta)}</div>`:"")+(curr.contact?`${t("contact")} <b>${esc(curr.contact)}</b>`:t("ask"));
+  const rows=[];
+  if(curr.cat)     rows.push([t("lCat"),     esc(dv(curr,"cat")), false]);
+  if(curr.src)     rows.push([t("lSrc"),     esc(curr.src),       false]);
+  if(curr.date)    rows.push([t("posted"),   esc(curr.date),      false]);
+  if(curr.contact) rows.push([t("lContact"), esc(curr.contact),   true ]);
+  $("dContact").innerHTML = rows.length
+    ? rows.map(([k,v,hi])=>`<div class="drow"><span class="dk">${k}</span><span class="dvv${hi?" hi":""}">${v}</span></div>`).join("")
+    : `<div class="drow">${t("ask")}</div>`;
   $("dSwiper").innerHTML=curr.photos.length
     ? curr.photos.map(p=>`<div class="slide"><img src="${p.full}" alt=""></div>`).join("")
     : `<div class="slide"><div class="emoji">${curr.icon}</div></div>`;
