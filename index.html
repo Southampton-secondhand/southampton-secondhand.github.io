@@ -36,6 +36,11 @@
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .d{margin-top:4px;font-size:12px;line-height:1.5;color:var(--muted);
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:#eceaf0;color:#7a7583}
+  .tag.wa{background:#d9f2d9;color:#1f6b34}
+  .tag.wx{background:#d9e8f5;color:#1c5a8a}
+  .dt2{margin-top:4px;font-size:10.5px;color:var(--muted)}
   .p{margin-top:6px;font-size:16px;font-weight:800;color:var(--price)}
   .p small{font-size:10.5px;font-weight:500}
   .c{margin-top:5px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -134,6 +139,7 @@ const DEMO = [
 
 const $=id=>document.getElementById(id);
 let ITEMS=[], curr=null;
+function srcClass(v){v=String(v).toLowerCase();return v.includes("whatsapp")?"wa":(v.includes("wechat")||v.includes("微信"))?"wx":""}
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
 async function load(){
@@ -160,6 +166,9 @@ async function load(){
         desc: f["Description"]||"",
         price: f["Price"]??"",
         contact: f["Contact Information"]||"",
+        cat: f["Category"]||"",
+        src: f["Source"]||"",
+        date: f["Date Posted"]||"",
         photos: (f["Photos"]||[]).map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url})),
         icon:"📦"
       };
@@ -182,8 +191,10 @@ function render(){
       <div class="cb">
         <div class="t">${esc(i.name)}</div>
         ${i.desc?`<div class="d">${esc(i.desc)}</div>`:""}
+        ${(i.cat||i.src)?`<div class="tags">${i.cat?`<span class="tag">${esc(i.cat)}</span>`:""}${i.src?`<span class="tag ${srcClass(i.src)}">${esc(i.src)}</span>`:""}</div>`:""}
         <div class="p"><small>£</small>${Number(i.price).toLocaleString()}</div>
         ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
+        ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
       </div>
     </div>`).join(""):`<div class="empty">暂时没有在卖的东西，过几天再来看看～</div>`;
   $("foot").textContent=ITEMS.length?`${ITEMS.length} item${ITEMS.length>1?"s":""} · updates live`:"";
@@ -195,7 +206,8 @@ function openDetail(idx){
   $("dPrice").innerHTML=`<small>£</small>${Number(curr.price).toLocaleString()}`;
   $("dName").textContent=curr.name;
   $("dDesc").textContent=curr.desc||"";
-  $("dContact").innerHTML=curr.contact?`Interested? Contact seller: <b>${esc(curr.contact)}</b>`:`Ask in the group chat for details`;
+  const meta=[curr.cat,curr.src,curr.date?`Posted ${curr.date}`:""].filter(Boolean).join(" · ");
+  $("dContact").innerHTML=(meta?`<div style="margin-bottom:8px;font-size:12.5px;color:var(--muted)">${esc(meta)}</div>`:"")+(curr.contact?`Interested? Contact seller: <b>${esc(curr.contact)}</b>`:`Ask in the group chat for details`);
   $("dSwiper").innerHTML=curr.photos.length
     ? curr.photos.map(p=>`<div class="slide"><img src="${p.full}" alt=""></div>`).join("")
     : `<div class="slide"><div class="emoji">${curr.icon}</div></div>`;
