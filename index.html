@@ -34,6 +34,8 @@
   .cb{padding:8px 10px 10px}
   .t{font-size:13.5px;line-height:1.45;font-weight:600;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .d{margin-top:4px;font-size:12px;line-height:1.5;color:var(--muted);
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .p{margin-top:6px;font-size:16px;font-weight:800;color:var(--price)}
   .p small{font-size:10.5px;font-weight:500}
   .c{margin-top:5px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -168,6 +170,7 @@ function render(){
       </div>
       <div class="cb">
         <div class="t">${esc(i.name)}</div>
+        ${i.desc?`<div class="d">${esc(i.desc)}</div>`:""}
         <div class="p"><small>£</small>${Number(i.price).toLocaleString()}</div>
         ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
       </div>
