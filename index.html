@@ -21,6 +21,14 @@
   .sbar input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:999px;
     font-size:14px;font-family:inherit;background:#fff;color:var(--text);outline:none}
   .sbar input:focus{border-color:var(--brand)}
+  .chips{max-width:1080px;margin:10px auto 0;padding:0 12px;display:flex;gap:8px;
+    overflow-x:auto;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none;border:1px solid var(--line);background:#fff;color:var(--text);
+    padding:7px 14px;border-radius:999px;font-size:13px;font-family:inherit;cursor:pointer;
+    white-space:nowrap}
+  .chip:hover{border-color:var(--brand)}
+  .chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
   #status{max-width:1080px;margin:10px auto 0;padding:0 12px;font-size:12px;color:var(--muted)}
 
   /* 瀑布流：手机2列，屏幕越大列越多 */
@@ -95,6 +103,7 @@
 
 <header><div class="wrap"><h1>🛒 Southampton Student Marketplace</h1><span>Second-hand finds from our groups</span></div></header>
 <div class="sbar"><input id="q" type="search" placeholder="🔍 Search items…" autocomplete="off"></div>
+<div class="chips" id="chips"></div>
 <div id="status"></div>
 <div class="masonry" id="grid"></div>
 <footer id="foot"></footer>
@@ -186,10 +195,21 @@ async function load(){
   render();
 }
 
-let VIEW=[];
+let VIEW=[], CAT="";
+function renderChips(){
+  const cats=[...new Set(ITEMS.map(i=>i.cat).filter(Boolean))].sort();
+  $("chips").innerHTML=cats.length
+    ? [`<button class="chip ${CAT?"":"on"}" onclick="pickCat('')">All</button>`]
+        .concat(cats.map(c=>`<button class="chip ${CAT===c?"on":""}" onclick="pickCat('${esc(c).replace(/'/g,"\\'")}')">${esc(c)}</button>`)).join("")
+    : "";
+}
+function pickCat(c){ CAT=(CAT===c)?"":c; render(); }
 function render(){
   const q=($("q").value||"").trim().toLowerCase();
-  VIEW=q?ITEMS.filter(i=>[i.name,i.desc,i.cat,i.src,i.contact].join(" ").toLowerCase().includes(q)):ITEMS;
+  VIEW=ITEMS.filter(i=>
+    (!CAT || i.cat===CAT) &&
+    (!q || [i.name,i.desc,i.cat,i.src,i.contact].join(" ").toLowerCase().includes(q)));
+  renderChips();
   $("grid").innerHTML=VIEW.length?VIEW.map((i,idx)=>`
     <div class="card" onclick="openDetail(${idx})">
       <div class="phwrap">
