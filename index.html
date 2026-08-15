@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>南安普顿学生二手市集</title>
+<title>Southampton Student Marketplace</title>
 <style>
   :root{
     --brand:#7A3B5E; --price:#e0344a; --bg:#f5f4f6; --card:#fff;
@@ -75,7 +75,7 @@
 </head>
 <body>
 
-<header><div class="wrap"><h1>🛒 南安普顿学生二手市集</h1><span>好物等你来</span></div></header>
+<header><div class="wrap"><h1>🛒 Southampton Student Marketplace</h1><span>Second-hand finds from our groups</span></div></header>
 <div id="status"></div>
 <div class="masonry" id="grid"></div>
 <footer id="foot"></footer>
@@ -92,38 +92,31 @@
   </div>
 </div>
 
+<script src="config.js"></script>
 <script>
 /* ================================================================
-   配置区：连接你的 Airtable（唯一需要改的地方）
-   ----------------------------------------------------------------
-   密钥怎么拿：airtable.com/create/tokens → Create token →
-   权限(Scopes)只勾 data.records:read → Access 只选这一个 base。
-   生成的密钥长这样：patAAAAAAA.BBBBBBBBBB（中间有一个小数点）
-   为了不触发 GitHub 的密钥扫描，请把它拆成两半分别粘贴：
-   part1 = pat9AX8y2dMKvNhBv
-   part2 = .fa9ccf619d1576ccc910feaf4682bdf34ada7b57099af7355eca880fe6459436
-   注意：这个密钥只有"读"权限、只能读这一个 base；表里不要放
-   你不愿公开的信息。
+   Airtable connection.
+   The access token lives in config.js (kept separate so this file
+   contains no secrets and can be updated freely).
+   config.js must define:
+     window.MARKET_CONFIG = { part1: "pat....", part2: ".xxxx" };
    ================================================================ */
-const CONFIG = {
-  part1 : "pat9AX8y2dMKvNhBv",
-  part2 : ".fa9ccf619d1576ccc910feaf4682bdf34ada7b57099af7355eca880fe6459436",
+const CONFIG = Object.assign({
+  part1 : "", part2 : "",
   baseId: "appz12UiXQCVgMbOq",
   table : "Listings",
   view  : "公开展示 Public Gallery"
-};
+}, window.MARKET_CONFIG || {});
 CONFIG.token = CONFIG.part1 + CONFIG.part2;
 
-/* 示例数据：没配置 token 时展示，方便预览效果 */
+/* Demo data shown when Airtable is not connected */
 const DEMO = [
- {name:"Canon EOS Rebel T7 相机",desc:"含 18-55mm 镜头，成色极好，快门数低。市中心面交。",price:320,contact:"微信 demo123",icon:"📷",photos:[]},
- {name:"复古皮沙发 三人位",desc:"真皮，扶手有轻微划痕，其他完好。需自取。",price:350,contact:"微信 demo123",icon:"🛋️",photos:[]},
- {name:"iPhone 13 Pro Max 256G",desc:"远峰蓝，无锁，含原装盒和充电线。",price:750,contact:"微信 demo123",icon:"📱",photos:[]},
- {name:"橡木餐桌 可坐6人",desc:"实木，含加长板，轻微使用痕迹。",price:425,contact:"微信 demo123",icon:"🪑",photos:[]},
- {name:"Samsung 55寸 4K 电视",desc:"2021款智能电视，功能全部正常。",price:400,contact:"微信 demo123",icon:"📺",photos:[]},
- {name:"婚纱 尺码8",desc:"象牙色蕾丝，仅穿一次，已干洗。",price:600,contact:"微信 demo123",icon:"👗",photos:[]},
- {name:"小冰箱 Midea",desc:"宿舍神器，九成新。",price:45,contact:"微信 demo123",icon:"🧊",photos:[]},
- {name:"人体工学椅",desc:"可调节头枕扶手，坐感很好。",price:20,contact:"微信 demo123",icon:"💺",photos:[]}
+ {name:"Canon EOS Rebel T7 Camera",desc:"18-55mm lens included, excellent condition.",price:320,contact:"WeChat demo123",icon:"📷",photos:[]},
+ {name:"Vintage Leather Sofa",desc:"Three-seater, minor scratches on armrest.",price:350,contact:"WeChat demo123",icon:"🛋️",photos:[]},
+ {name:"iPhone 13 Pro Max 256G",desc:"Sierra Blue, unlocked, box included.",price:750,contact:"WeChat demo123",icon:"📱",photos:[]},
+ {name:"Oak Dining Table",desc:"Solid wood, seats 6, extension leaf.",price:425,contact:"WeChat demo123",icon:"🪑",photos:[]},
+ {name:"Mini Fridge",desc:"Perfect for dorms, like new.",price:45,contact:"WeChat demo123",icon:"🧊",photos:[]},
+ {name:"Ergonomic Office Chair",desc:"Adjustable headrest and armrests.",price:20,contact:"WeChat demo123",icon:"💺",photos:[]}
 ];
 
 const $=id=>document.getElementById(id);
@@ -134,10 +127,10 @@ async function load(){
   const configured = /^pat[A-Za-z0-9]+\.[A-Za-z0-9]+$/.test(CONFIG.token);
   if(!configured){
     ITEMS=DEMO;
-    $("status").textContent="⚠️ 预览模式：显示的是示例数据（还没连接 Airtable）";
+    $("status").textContent="⚠️ Preview mode: showing demo data (Airtable not connected)";
     render(); return;
   }
-  $("status").textContent="加载中…";
+  $("status").textContent="Loading…";
   try{
     let records=[], offset="";
     do{
@@ -150,7 +143,7 @@ async function load(){
     ITEMS=records.map(rec=>{
       const f=rec.fields;
       return {
-        name: f["Item name"]||"未命名",
+        name: f["Item name"]||"Untitled",
         desc: f["Description"]||"",
         price: f["Price"]??"",
         contact: f["Contact Information"]||"",
@@ -160,7 +153,7 @@ async function load(){
     });
     $("status").textContent="";
   }catch(e){
-    $("status").textContent="⚠️ 数据加载失败（"+e.message+"），显示示例数据";
+    $("status").textContent="⚠️ Failed to load ("+e.message+"), showing demo data";
     ITEMS=DEMO;
   }
   render();
@@ -179,7 +172,7 @@ function render(){
         ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
       </div>
     </div>`).join(""):`<div class="empty">暂时没有在卖的东西，过几天再来看看～</div>`;
-  $("foot").textContent=ITEMS.length?`共 ${ITEMS.length} 件 · 数据实时更新`:"";
+  $("foot").textContent=ITEMS.length?`${ITEMS.length} item${ITEMS.length>1?"s":""} · updates live`:"";
 }
 
 function openDetail(idx){
@@ -188,7 +181,7 @@ function openDetail(idx){
   $("dPrice").innerHTML=`<small>£</small>${Number(curr.price).toLocaleString()}`;
   $("dName").textContent=curr.name;
   $("dDesc").textContent=curr.desc||"";
-  $("dContact").innerHTML=curr.contact?`想要？联系卖家：<b>${esc(curr.contact)}</b>`:`详情请在群里联系卖家`;
+  $("dContact").innerHTML=curr.contact?`Interested? Contact seller: <b>${esc(curr.contact)}</b>`:`Ask in the group chat for details`;
   $("dSwiper").innerHTML=curr.photos.length
     ? curr.photos.map(p=>`<div class="slide"><img src="${p.full}" alt=""></div>`).join("")
     : `<div class="slide"><div class="emoji">${curr.icon}</div></div>`;
