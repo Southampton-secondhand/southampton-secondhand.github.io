@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>南安普顿学生二手市集</title>
+<style>
+  :root{
+    --brand:#7A3B5E; --price:#e0344a; --bg:#f5f4f6; --card:#fff;
+    --text:#25202b; --muted:#9a94a3; --line:#ecebee;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text)}
+  header{background:var(--brand);color:#fff;padding:14px 16px;
+    padding-top:max(14px,env(safe-area-inset-top));position:sticky;top:0;z-index:20}
+  header .wrap{max-width:1080px;margin:0 auto;display:flex;align-items:baseline;gap:10px}
+  header h1{font-size:17px;font-weight:700}
+  header span{font-size:11.5px;opacity:.75}
+
+  #status{max-width:1080px;margin:10px auto 0;padding:0 12px;font-size:12px;color:var(--muted)}
+
+  /* 瀑布流：手机2列，屏幕越大列越多 */
+  .masonry{max-width:1080px;margin:10px auto 30px;padding:0 8px;
+    column-count:2;column-gap:8px}
+  @media(min-width:640px){.masonry{column-count:3}}
+  @media(min-width:900px){.masonry{column-count:4;column-gap:12px}}
+  .card{break-inside:avoid;background:var(--card);border-radius:12px;overflow:hidden;
+    margin-bottom:8px;cursor:pointer;box-shadow:0 1px 4px rgba(40,25,40,.06)}
+  .card:active{transform:scale(.98)}
+  .ph{width:100%;display:block;background:linear-gradient(135deg,#f0eaee,#e5dce2)}
+  .ph img{width:100%;display:block}
+  .ph .emoji{display:flex;align-items:center;justify-content:center;height:130px;font-size:44px}
+  .pc{position:absolute}
+  .cb{padding:8px 10px 10px}
+  .t{font-size:13.5px;line-height:1.45;font-weight:600;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .p{margin-top:6px;font-size:16px;font-weight:800;color:var(--price)}
+  .p small{font-size:10.5px;font-weight:500}
+  .c{margin-top:5px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;
+    font-size:10.5px;padding:2px 7px;border-radius:999px}
+  .phwrap{position:relative}
+  .empty{text-align:center;color:var(--muted);padding:70px 20px;font-size:14px;column-span:all}
+
+  /* 详情层 */
+  #detail{display:none;position:fixed;inset:0;background:#fff;z-index:100;overflow:auto;
+    overscroll-behavior:contain}
+  #detail.open{display:block}
+  .dtop{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:10px;
+    padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));
+    background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .dtop button{border:none;background:#f1eff3;width:34px;height:34px;border-radius:50%;
+    font-size:16px;cursor:pointer;flex:none}
+  .dtop .dt{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .swiper{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;background:#171319;
+    -webkit-overflow-scrolling:touch}
+  .swiper::-webkit-scrollbar{display:none}
+  .slide{flex:0 0 100%;scroll-snap-align:center;display:flex;align-items:center;justify-content:center;
+    min-height:300px;max-height:62vh}
+  .slide img{max-width:100%;max-height:62vh;object-fit:contain}
+  .slide .emoji{font-size:90px;padding:70px 0}
+  .sdots{display:flex;justify-content:center;gap:6px;padding:10px 0 0}
+  .sdots i{width:7px;height:7px;border-radius:50%;background:#d8d3dc}
+  .sdots i.on{background:var(--brand)}
+  .dbody{max-width:680px;margin:0 auto;padding:16px 18px 40px}
+  .dprice{font-size:26px;font-weight:800;color:var(--price)}
+  .dprice small{font-size:13px;font-weight:500}
+  .dname{font-size:18px;font-weight:700;margin-top:8px;line-height:1.4}
+  .ddesc{font-size:14.5px;line-height:1.8;margin-top:12px;white-space:pre-wrap;color:#3c3644}
+  .dcontact{margin-top:18px;background:#faf7f9;border:1px solid var(--line);border-radius:12px;
+    padding:13px 15px;font-size:14px}
+  .dcontact b{color:var(--brand)}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;padding:0 16px 26px;column-span:all}
+</style>
+</head>
+<body>
+
+<header><div class="wrap"><h1>🛒 南安普顿学生二手市集</h1><span>好物等你来</span></div></header>
+<div id="status"></div>
+<div class="masonry" id="grid"></div>
+<footer id="foot"></footer>
+
+<div id="detail">
+  <div class="dtop"><button onclick="closeDetail()">✕</button><div class="dt" id="dTitle"></div></div>
+  <div class="swiper" id="dSwiper"></div>
+  <div class="sdots" id="dDots"></div>
+  <div class="dbody">
+    <div class="dprice" id="dPrice"></div>
+    <div class="dname" id="dName"></div>
+    <div class="ddesc" id="dDesc"></div>
+    <div class="dcontact" id="dContact"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   配置区：连接你的 Airtable（唯一需要改的地方）
+   ----------------------------------------------------------------
+   token 怎么拿：airtable.com/create/tokens → Create token →
+   权限(Scopes)只勾 data.records:read → Access 只选这一个 base →
+   创建后把 pat 开头的一串粘贴到下面引号里。
+   注意：这个 token 会随网页公开，所以只给"读"权限、只给这一个
+   base，并且这个 base 里不要放你不愿公开的信息。
+   ================================================================ */
+const CONFIG = {
+  token : "在这里粘贴你的AIRTABLE令牌",
+  baseId: "appz12UiXQCVgMbOq",
+  table : "Listings",
+  view  : "公开展示 Public Gallery"
+};
+
+/* 示例数据：没配置 token 时展示，方便预览效果 */
+const DEMO = [
+ {name:"Canon EOS Rebel T7 相机",desc:"含 18-55mm 镜头，成色极好，快门数低。市中心面交。",price:320,contact:"微信 demo123",icon:"📷",photos:[]},
+ {name:"复古皮沙发 三人位",desc:"真皮，扶手有轻微划痕，其他完好。需自取。",price:350,contact:"微信 demo123",icon:"🛋️",photos:[]},
+ {name:"iPhone 13 Pro Max 256G",desc:"远峰蓝，无锁，含原装盒和充电线。",price:750,contact:"微信 demo123",icon:"📱",photos:[]},
+ {name:"橡木餐桌 可坐6人",desc:"实木，含加长板，轻微使用痕迹。",price:425,contact:"微信 demo123",icon:"🪑",photos:[]},
+ {name:"Samsung 55寸 4K 电视",desc:"2021款智能电视，功能全部正常。",price:400,contact:"微信 demo123",icon:"📺",photos:[]},
+ {name:"婚纱 尺码8",desc:"象牙色蕾丝，仅穿一次，已干洗。",price:600,contact:"微信 demo123",icon:"👗",photos:[]},
+ {name:"小冰箱 Midea",desc:"宿舍神器，九成新。",price:45,contact:"微信 demo123",icon:"🧊",photos:[]},
+ {name:"人体工学椅",desc:"可调节头枕扶手，坐感很好。",price:20,contact:"微信 demo123",icon:"💺",photos:[]}
+];
+
+const $=id=>document.getElementById(id);
+let ITEMS=[], curr=null;
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+async function load(){
+  const configured = CONFIG.token && !CONFIG.token.includes("令牌");
+  if(!configured){
+    ITEMS=DEMO;
+    $("status").textContent="⚠️ 预览模式：显示的是示例数据（还没连接 Airtable）";
+    render(); return;
+  }
+  $("status").textContent="加载中…";
+  try{
+    let records=[], offset="";
+    do{
+      const url=`https://api.airtable.com/v0/${CONFIG.baseId}/${encodeURIComponent(CONFIG.table)}?view=${encodeURIComponent(CONFIG.view)}&pageSize=100`+(offset?`&offset=${offset}`:"");
+      const r=await fetch(url,{headers:{Authorization:`Bearer ${CONFIG.token}`}});
+      if(!r.ok)throw new Error("HTTP "+r.status);
+      const j=await r.json();
+      records.push(...j.records); offset=j.offset||"";
+    }while(offset);
+    ITEMS=records.map(rec=>{
+      const f=rec.fields;
+      return {
+        name: f["Item name"]||"未命名",
+        desc: f["Description"]||"",
+        price: f["Price"]??"",
+        contact: f["Contact Information"]||"",
+        photos: (f["Photos"]||[]).map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url})),
+        icon:"📦"
+      };
+    });
+    $("status").textContent="";
+  }catch(e){
+    $("status").textContent="⚠️ 数据加载失败（"+e.message+"），显示示例数据";
+    ITEMS=DEMO;
+  }
+  render();
+}
+
+function render(){
+  $("grid").innerHTML=ITEMS.length?ITEMS.map((i,idx)=>`
+    <div class="card" onclick="openDetail(${idx})">
+      <div class="phwrap">
+        <div class="ph">${i.photos.length?`<img src="${i.photos[0].thumb}" loading="lazy" alt="${esc(i.name)}">`:`<div class="emoji">${i.icon}</div>`}</div>
+        ${i.photos.length>1?`<span class="badge">📷 ${i.photos.length}</span>`:""}
+      </div>
+      <div class="cb">
+        <div class="t">${esc(i.name)}</div>
+        <div class="p"><small>£</small>${Number(i.price).toLocaleString()}</div>
+        ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
+      </div>
+    </div>`).join(""):`<div class="empty">暂时没有在卖的东西，过几天再来看看～</div>`;
+  $("foot").textContent=ITEMS.length?`共 ${ITEMS.length} 件 · 数据实时更新`:"";
+}
+
+function openDetail(idx){
+  curr=ITEMS[idx];
+  $("dTitle").textContent=curr.name;
+  $("dPrice").innerHTML=`<small>£</small>${Number(curr.price).toLocaleString()}`;
+  $("dName").textContent=curr.name;
+  $("dDesc").textContent=curr.desc||"";
+  $("dContact").innerHTML=curr.contact?`想要？联系卖家：<b>${esc(curr.contact)}</b>`:`详情请在群里联系卖家`;
+  $("dSwiper").innerHTML=curr.photos.length
+    ? curr.photos.map(p=>`<div class="slide"><img src="${p.full}" alt=""></div>`).join("")
+    : `<div class="slide"><div class="emoji">${curr.icon}</div></div>`;
+  const n=Math.max(curr.photos.length,1);
+  $("dDots").innerHTML=n>1?Array.from({length:n},(_,k)=>`<i class="${k?'':'on'}"></i>`).join(""):"";
+  $("dSwiper").scrollLeft=0;
+  $("detail").classList.add("open");
+  document.body.style.overflow="hidden";
+}
+function closeDetail(){
+  $("detail").classList.remove("open");
+  document.body.style.overflow="";
+}
+$("dSwiper").addEventListener("scroll",()=>{
+  const sw=$("dSwiper");
+  const k=Math.round(sw.scrollLeft/sw.clientWidth);
+  [...$("dDots").children].forEach((d,j)=>d.classList.toggle("on",j===k));
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDetail()});
+
+load();
+</script>
+</body>
+</html>
