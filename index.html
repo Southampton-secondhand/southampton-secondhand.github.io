@@ -258,6 +258,109 @@ function applyLang(){
   document.title=LANG==="zh"?"南安普顿学生二手市集":"Southampton Student Marketplace";
 }
 
+
+/* ---------- 智能搜索：同义词词典 + 模糊匹配 ---------- */
+/* 每一组里的词互为近义词，中英混排。搜其中任意一个，组内其他词都能命中。
+   以后要加词，直接往对应的组里加即可。 */
+const SYN_GROUPS = [
+ ["锅","炖锅","汤锅","煮锅","奶锅","平底锅","炒锅","锅具","锅子","pot","pots","pan","pans","saucepan","stockpot","cookware","milk pan","frying pan"],
+ ["滤网","过滤器","滤器","漏勺","筛子","筛网","滤锅","沥水篮","洗菜篮","strainer","sieve","colander","filter"],
+ ["碗","盘","盘子","碟子","杯","杯子","马克杯","酒杯","餐具","餐盘","bowl","bowls","plate","plates","dish","dishes","cup","cups","mug","glassware","wine glass","dinnerware","tableware","crockery"],
+ ["刀","菜刀","水果刀","刀具","主厨刀","砧板","菜板","案板","切菜板","削皮器","刨刀","knife","knives","chopping board","cutting board","board","peeler","chef knife"],
+ ["勺","勺子","汤勺","铲","锅铲","翻转铲","厨具","厨房用具","餐勺","spoon","spoons","ladle","turner","spatula","utensil","utensils","server"],
+ ["叉","叉子","筷子","刀叉","刀叉勺","cutlery","fork","forks","chopsticks","teaspoon","silverware"],
+ ["刨丝器","擦丝器","磨碎器","擦子","礤床","grater","graters","shredder"],
+ ["夹子","食物夹","烧烤夹","剪刀","厨房剪","开瓶器","开罐器","起子","tongs","scissors","opener","corkscrew","bottle opener"],
+ ["碗架","沥水架","碗碟架","置物架","滴水架","dish rack","drainer","draining rack","rack"],
+ ["咖啡","法压壶","咖啡壶","滤压壶","french press","coffee","cafetiere","coffee maker"],
+ ["水壶","烧水壶","电水壶","热水壶","kettle","boiler"],
+ ["微波炉","烤箱","电饭煲","电饭锅","空气炸锅","microwave","oven","rice cooker","air fryer","toaster","烤面包机"],
+ ["冰箱","小冰箱","冷藏","fridge","refrigerator","mini fridge","freezer"],
+ ["椅","椅子","座椅","办公椅","电脑椅","转椅","凳","凳子","靠椅","chair","chairs","stool","seat","office chair","desk chair","armchair"],
+ ["桌","桌子","书桌","餐桌","茶几","电脑桌","写字台","desk","table","dining table","coffee table","workbench"],
+ ["沙发","懒人沙发","单人沙发","sofa","couch","settee","futon"],
+ ["床","床垫","床架","被子","被褥","枕头","床品","床单","bed","mattress","bed frame","duvet","pillow","bedding","sheet","blanket"],
+ ["柜","柜子","衣柜","书架","书柜","抽屉","收纳","储物","鞋柜","wardrobe","shelf","shelves","bookshelf","bookcase","cabinet","drawer","drawers","storage","unit"],
+ ["镜子","全身镜","落地镜","mirror"],
+ ["地毯","毯子","垫子","地垫","rug","carpet","mat","doormat"],
+ ["灯","台灯","落地灯","床头灯","夜灯","灯具","lamp","light","lights","desk lamp","floor lamp","lighting"],
+ ["风扇","电风扇","落地扇","台扇","circulator","fan","standing fan","pedestal fan","cooling"],
+ ["吹风机","电吹风","风筒","hair dryer","hairdryer","blow dryer","dryer"],
+ ["插线板","排插","插座","延长线","接线板","转换头","转接头","插头","extension lead","extension","power strip","plug","adapter","adaptor","socket","multi plug"],
+ ["电脑","笔记本","笔电","显示器","屏幕","键盘","鼠标","laptop","computer","pc","monitor","screen","keyboard","mouse","macbook"],
+ ["手机","平板","耳机","音箱","音响","充电器","充电线","phone","iphone","android","tablet","ipad","headphones","earphones","earbuds","speaker","charger","cable"],
+ ["电视","显示屏","tv","television","smart tv"],
+ ["相机","照相机","单反","摄像头","camera","dslr","webcam","gopro"],
+ ["熨斗","挂烫机","蒸汽挂烫","iron","steamer","ironing"],
+ ["吸尘器","除尘","vacuum","hoover","vacuum cleaner"],
+ ["秤","体重秤","电子秤","称重","浴室秤","scale","scales","weighing scale","bathroom scale"],
+ ["拖把","地拖","旋转拖把","桶","水桶","mop","spin mop","bucket","pail"],
+ ["扫把","扫帚","笤帚","簸箕","撮箕","刷子","broom","dustpan","brush","sweeper"],
+ ["清洁剂","洗洁精","洗衣液","消毒液","清洁","打扫","cleaner","detergent","cleaning","soap","washing liquid","bleach"],
+ ["垃圾桶","废纸篓","垃圾袋","bin","trash","rubbish","waste basket"],
+ ["哑铃","杠铃","配重片","健身","器材","举重","dumbbell","dumbbells","weights","barbell","gym","fitness","workout","training"],
+ ["瑜伽垫","健身垫","运动垫","yoga mat","exercise mat","gym mat"],
+ ["自行车","单车","山地车","脚踏车","bike","bicycle","cycle","mountain bike"],
+ ["衣服","外套","大衣","裙子","裤子","clothes","clothing","jacket","coat","dress","trousers","jeans"],
+ ["鞋","鞋子","靴子","运动鞋","shoes","boots","trainers","sneakers"],
+ ["包","书包","背包","行李箱","箱子","拉杆箱","bag","backpack","rucksack","suitcase","luggage","trolley"],
+ ["书","教材","课本","书籍","参考书","book","books","textbook","textbooks","notes"],
+ ["雨伞","伞","umbrella"],
+ ["加热器","取暖器","电暖气","暖风机","heater","radiator","electric heater"],
+ ["锅碗瓢盆","厨房","厨具套装","kitchen","kitchenware","kitchen set"],
+ ["家具","furniture","home"],
+ ["电器","家电","electronics","appliance","appliances"]
+];
+const SYN_INDEX = SYN_GROUPS.map(g => g.map(x => x.toLowerCase()));
+const isCJK = ch => /[一-鿿]/.test(ch);
+
+/* 把查询词扩展成一组近义词 */
+function expandQuery(q){
+  const out = new Set([q]);
+  SYN_INDEX.forEach(group => {
+    const hit = group.some(term => term === q || (term.length>1 && q.includes(term)) || (q.length>1 && term.includes(q)));
+    if(hit) group.forEach(term => out.add(term));
+  });
+  return [...out];
+}
+/* 模糊相似度：中文按字重叠，英文按二元组重叠 */
+function fuzzyScore(q, hay){
+  const cjk = [...q].filter(isCJK);
+  if(cjk.length){
+    const hitCount = cjk.filter(c => hay.includes(c)).length;
+    const ratio = hitCount / cjk.length;
+    return ratio >= 0.5 ? 30 + 30*ratio : 0;
+  }
+  if(q.length < 4) return 0;
+  const bi = t => { const a=new Set(); for(let i=0;i<t.length-1;i++) a.add(t.slice(i,i+2)); return a; };
+  const qb = bi(q); if(!qb.size) return 0;
+  let best = 0;
+  for(const w of hay.split(/[^a-z0-9]+/)){
+    if(w.length < 3) continue;
+    if(w.startsWith(q) || q.startsWith(w)){ best = Math.max(best, 0.9); continue; }
+    const wb = bi(w);
+    let inter = 0; qb.forEach(g => { if(wb.has(g)) inter++; });
+    best = Math.max(best, (2*inter) / (qb.size + wb.size));   // Dice 系数
+  }
+  return best >= 0.62 ? 20 + 40*best : 0;
+}
+/* 整词匹配：英文要求词边界，中文直接包含 */
+const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function hasTerm(hay, term){
+  if(isCJK(term[0])) return hay.includes(term);
+  return new RegExp("\\b" + escRe(term) + "\\b").test(hay);
+}
+/* 单件商品的匹配得分：0 表示不匹配 */
+function matchScore(item, q, expanded, allowFuzzy){
+  const hay = [item.name, item.desc, item.cat, item.src, item.contact,
+               item._zh_name, item._zh_desc, item._zh_cat].filter(Boolean).join(" ").toLowerCase();
+  if(hay.includes(q)) return 100;
+  for(const term of expanded){
+    if(term !== q && term.length >= (isCJK(term[0]) ? 1 : 3) && hasTerm(hay, term)) return 80;
+  }
+  return allowFuzzy ? fuzzyScore(q, hay) : 0;
+}
+
 const $=id=>document.getElementById(id);
 let ITEMS=[], curr=null;
 function srcClass(v){v=String(v).toLowerCase();return v.includes("whatsapp")?"wa":(v.includes("wechat")||v.includes("微信"))?"wx":""}
@@ -340,10 +443,19 @@ function toggleCats(){
 }
 function render(){
   const q=($("q").value||"").trim().toLowerCase();
-  VIEW=ITEMS.filter(i=>
-    (!CAT || i.cat===CAT) &&
-    (!q || [i.name,i.desc,i.cat,i.src,i.contact,i._zh_name,i._zh_desc,i._zh_cat].filter(Boolean).join(" ").toLowerCase().includes(q)));
-  VIEW=applySort(VIEW);
+  const pool = ITEMS.filter(i => !CAT || i.cat===CAT);
+  if(q){
+    const expanded = expandQuery(q);
+    const run = fz => pool.map(i => ({i, sc: matchScore(i, q, expanded, fz)}))
+                          .filter(x => x.sc > 0)
+                          .sort((a,b) => b.sc - a.sc);
+    let hits = run(false);              // 先精确 + 同义词
+    if(!hits.length) hits = run(true);  // 都没有才用模糊兜底（容错拼写/近似词）
+    VIEW = hits.map(x => x.i);
+  } else {
+    VIEW = pool;
+  }
+  if(SORT) VIEW=applySort(VIEW);
   renderChips(); renderSort();
   $("grid").innerHTML=VIEW.length?VIEW.map((i,idx)=>`
     <div class="card" onclick="openDetail(${idx})">
