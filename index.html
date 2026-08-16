@@ -26,9 +26,15 @@
   .sbar input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:999px;
     font-size:14px;font-family:inherit;background:#fff;color:var(--text);outline:none}
   .sbar input:focus{border-color:var(--brand)}
-  .chips{max-width:1080px;margin:10px auto 0;padding:0 12px;display:flex;gap:8px;
-    overflow-x:auto;scrollbar-width:none}
-  .chips::-webkit-scrollbar{display:none}
+  .catbar{max-width:1080px;margin:10px auto 0;padding:0 12px}
+  .catbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;
+    color:var(--text);padding:8px 15px;border-radius:999px;font-size:13.5px;font-family:inherit;cursor:pointer}
+  .catbtn:hover{border-color:var(--brand)}
+  .catbtn.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .catbtn .caret{font-size:11px;transition:transform .18s}
+  .catbtn.open .caret{transform:rotate(180deg)}
+  .chips{max-width:1080px;margin:0 auto;padding:0 12px;display:none;flex-wrap:wrap;gap:8px}
+  .chips.open{display:flex;margin-top:8px}
   .chip{flex:none;border:1px solid var(--line);background:#fff;color:var(--text);
     padding:7px 14px;border-radius:999px;font-size:13px;font-family:inherit;cursor:pointer;
     white-space:nowrap}
@@ -116,6 +122,11 @@
   <button class="lang" id="langBtn" onclick="toggleLang()">中文</button>
 </div></header>
 <div class="sbar"><input id="q" type="search" placeholder="🔍 Search items…" autocomplete="off"></div>
+<div class="catbar">
+  <button class="catbtn" id="catBtn" onclick="toggleCats()">
+    <span id="catLabel"></span><span class="caret">▾</span>
+  </button>
+</div>
 <div class="chips" id="chips"></div>
 <div id="status"></div>
 <div class="masonry" id="grid"></div>
@@ -171,14 +182,14 @@ const T={
       search:"🔍 Search items…", all:"All", btn:"中文",
       empty:"Nothing for sale right now — check back soon!", noMatch:"No items match your search",
       contact:"Interested? Contact seller:", ask:"Ask in the group chat for details",
-      posted:"Posted", lCat:"Category", lSrc:"Source", lContact:"Contact",
+      posted:"Posted", lCat:"Category", allCats:"All categories", lSrc:"Source", lContact:"Contact",
       item:"item", items:"items", live:"updates live",
       loading:"Loading…", translating:"Translating…"},
   zh:{title:"🛒 南安普顿学生二手市集", sub:"来自群里的二手好物",
       search:"🔍 搜索物品…", all:"全部", btn:"EN",
       empty:"暂时没有在卖的东西，过几天再来看看～", noMatch:"没有找到符合的物品",
       contact:"想要？联系卖家：", ask:"详情请在群里问卖家",
-      posted:"发布于", lCat:"分类", lSrc:"来源", lContact:"联系方式",
+      posted:"发布于", lCat:"分类", allCats:"全部分类", lSrc:"来源", lContact:"联系方式",
       item:"件", items:"件", live:"实时更新",
       loading:"加载中…", translating:"翻译中…"}
 };
@@ -285,6 +296,9 @@ async function load(){
 let VIEW=[], CAT="";
 function renderChips(){
   const cats=[...new Set(ITEMS.map(i=>i.cat).filter(Boolean))].sort();
+  const zh=(v)=>LANG==="zh"?(ITEMS.find(i=>i.cat===v)?.["_zh_cat"]||v):v;
+  $("catLabel").textContent = CAT ? zh(CAT) : t("allCats");
+  $("catBtn").classList.toggle("active", !!CAT);
   $("chips").innerHTML=cats.length
     ? [`<button class="chip ${CAT?"":"on"}" onclick="pickCat('')">${t("all")}</button>`]
         .concat(cats.map(c=>{
@@ -293,7 +307,11 @@ function renderChips(){
         })).join("")
     : "";
 }
-function pickCat(c){ CAT=(CAT===c)?"":c; render(); }
+function pickCat(c){ CAT=(CAT===c)?"":c; $("chips").classList.remove("open"); $("catBtn").classList.remove("open"); render(); }
+function toggleCats(){
+  const open=$("chips").classList.toggle("open");
+  $("catBtn").classList.toggle("open",open);
+}
 function render(){
   const q=($("q").value||"").trim().toLowerCase();
   VIEW=ITEMS.filter(i=>
