@@ -26,7 +26,11 @@
   .sbar input{width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:999px;
     font-size:14px;font-family:inherit;background:#fff;color:var(--text);outline:none}
   .sbar input:focus{border-color:var(--brand)}
-  .catbar{max-width:1080px;margin:10px auto 0;padding:0 12px}
+  .catbar{max-width:1080px;margin:10px auto 0;padding:0 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .sortsel{border:1px solid var(--line);background:#fff;color:var(--text);padding:8px 12px;
+    border-radius:999px;font-size:13.5px;font-family:inherit;cursor:pointer;outline:none;max-width:60%}
+  .sortsel:hover{border-color:var(--brand)}
+  .sortsel.active{background:var(--brand);color:#fff;border-color:var(--brand)}
   .catbtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;
     color:var(--text);padding:8px 15px;border-radius:999px;font-size:13.5px;font-family:inherit;cursor:pointer}
   .catbtn:hover{border-color:var(--brand)}
@@ -126,6 +130,7 @@
   <button class="catbtn" id="catBtn" onclick="toggleCats()">
     <span id="catLabel"></span><span class="caret">▾</span>
   </button>
+  <select class="sortsel" id="sortSel" onchange="SORT=this.value;render()"></select>
 </div>
 <div class="chips" id="chips"></div>
 <div id="status"></div>
@@ -182,14 +187,18 @@ const T={
       search:"🔍 Search items…", all:"All", btn:"中文",
       empty:"Nothing for sale right now — check back soon!", noMatch:"No items match your search",
       contact:"Interested? Contact seller:", ask:"Ask in the group chat for details",
-      posted:"Posted", lCat:"Category", allCats:"All categories", lSrc:"Source", lContact:"Contact",
+      posted:"Posted", lCat:"Category", allCats:"All categories",
+      sortDefault:"Sort: default", sortNew:"Newest first", sortOld:"Oldest first",
+      sortLow:"Price: low to high", sortHigh:"Price: high to low", lSrc:"Source", lContact:"Contact",
       item:"item", items:"items", live:"updates live",
       loading:"Loading…", translating:"Translating…"},
   zh:{title:"🛒 南安普顿学生二手市集", sub:"来自群里的二手好物",
       search:"🔍 搜索物品…", all:"全部", btn:"EN",
       empty:"暂时没有在卖的东西，过几天再来看看～", noMatch:"没有找到符合的物品",
       contact:"想要？联系卖家：", ask:"详情请在群里问卖家",
-      posted:"发布于", lCat:"分类", allCats:"全部分类", lSrc:"来源", lContact:"联系方式",
+      posted:"发布于", lCat:"分类", allCats:"全部分类",
+      sortDefault:"排序：默认", sortNew:"最新发布", sortOld:"最早发布",
+      sortLow:"价格：低到高", sortHigh:"价格：高到低", lSrc:"来源", lContact:"联系方式",
       item:"件", items:"件", live:"实时更新",
       loading:"加载中…", translating:"翻译中…"}
 };
@@ -293,7 +302,24 @@ async function load(){
   render();
 }
 
-let VIEW=[], CAT="";
+let VIEW=[], CAT="", SORT="";
+const SORT_KEYS=[["","sortDefault"],["dateDesc","sortNew"],["dateAsc","sortOld"],["priceAsc","sortLow"],["priceDesc","sortHigh"]];
+function renderSort(){
+  const sel=$("sortSel");
+  sel.innerHTML=SORT_KEYS.map(([v,k])=>`<option value="${v}">${t(k)}</option>`).join("");
+  sel.value=SORT;
+  sel.classList.toggle("active", !!SORT);
+}
+function applySort(list){
+  const num=v=>{const n=Number(v);return isNaN(n)?0:n};
+  const day=v=>v?String(v):"";
+  const a=[...list];
+  if(SORT==="priceAsc")  a.sort((x,y)=>num(x.price)-num(y.price));
+  if(SORT==="priceDesc") a.sort((x,y)=>num(y.price)-num(x.price));
+  if(SORT==="dateDesc")  a.sort((x,y)=>day(y.date).localeCompare(day(x.date)));
+  if(SORT==="dateAsc")   a.sort((x,y)=>day(x.date).localeCompare(day(y.date)));
+  return a;
+}
 function renderChips(){
   const cats=[...new Set(ITEMS.map(i=>i.cat).filter(Boolean))].sort();
   const zh=(v)=>LANG==="zh"?(ITEMS.find(i=>i.cat===v)?.["_zh_cat"]||v):v;
@@ -317,7 +343,8 @@ function render(){
   VIEW=ITEMS.filter(i=>
     (!CAT || i.cat===CAT) &&
     (!q || [i.name,i.desc,i.cat,i.src,i.contact,i._zh_name,i._zh_desc,i._zh_cat].filter(Boolean).join(" ").toLowerCase().includes(q)));
-  renderChips();
+  VIEW=applySort(VIEW);
+  renderChips(); renderSort();
   $("grid").innerHTML=VIEW.length?VIEW.map((i,idx)=>`
     <div class="card" onclick="openDetail(${idx})">
       <div class="phwrap">
