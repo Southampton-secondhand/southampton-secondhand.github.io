@@ -70,6 +70,7 @@
   .dt2{margin-top:4px;font-size:10.5px;color:var(--muted)}
   .p{margin-top:6px;font-size:16px;font-weight:800;color:var(--price)}
   .p small{font-size:10.5px;font-weight:500}
+  .p .poa,.dprice .poa{font-size:13px;font-weight:700;color:var(--muted)}
   .c{margin-top:5px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;
     font-size:10.5px;padding:2px 7px;border-radius:999px}
@@ -172,12 +173,12 @@ CONFIG.token = CONFIG.part1 + CONFIG.part2;
 
 /* Demo data shown when Airtable is not connected */
 const DEMO = [
- {name:"Canon EOS Rebel T7 Camera",desc:"18-55mm lens included, excellent condition.",price:320,contact:"WeChat demo123",icon:"📷",photos:[]},
- {name:"Vintage Leather Sofa",desc:"Three-seater, minor scratches on armrest.",price:350,contact:"WeChat demo123",icon:"🛋️",photos:[]},
- {name:"iPhone 13 Pro Max 256G",desc:"Sierra Blue, unlocked, box included.",price:750,contact:"WeChat demo123",icon:"📱",photos:[]},
- {name:"Oak Dining Table",desc:"Solid wood, seats 6, extension leaf.",price:425,contact:"WeChat demo123",icon:"🪑",photos:[]},
- {name:"Mini Fridge",desc:"Perfect for dorms, like new.",price:45,contact:"WeChat demo123",icon:"🧊",photos:[]},
- {name:"Ergonomic Office Chair",desc:"Adjustable headrest and armrests.",price:20,contact:"WeChat demo123",icon:"💺",photos:[]}
+ {name:"Canon EOS Rebel T7 Camera",desc:"18-55mm lens included, excellent condition.",price:320,contact:"WeChat demo123",src:["WeChat"],icon:"📷",photos:[]},
+ {name:"Vintage Leather Sofa",desc:"Three-seater, minor scratches on armrest.",price:350,contact:"WeChat demo123",src:["WeChat"],icon:"🛋️",photos:[]},
+ {name:"iPhone 13 Pro Max 256G",desc:"Sierra Blue, unlocked, box included.",price:750,contact:"WeChat demo123",src:["WeChat"],icon:"📱",photos:[]},
+ {name:"Oak Dining Table",desc:"Solid wood, seats 6, extension leaf.",price:425,contact:"WeChat demo123",src:["WeChat"],icon:"🪑",photos:[]},
+ {name:"Mini Fridge",desc:"Perfect for dorms, like new.",price:45,contact:"WeChat demo123",src:["WeChat"],icon:"🧊",photos:[]},
+ {name:"Ergonomic Office Chair",desc:"Adjustable headrest and armrests.",price:20,contact:"WeChat demo123",src:["WeChat"],icon:"💺",photos:[]}
 ];
 
 /* ---------- 语言 / Language ---------- */
@@ -187,7 +188,7 @@ const T={
       search:"🔍 Search items…", all:"All", btn:"中文",
       empty:"Nothing for sale right now — check back soon!", noMatch:"No items match your search",
       contact:"Interested? Contact seller:", ask:"Ask in the group chat for details",
-      posted:"Posted", lCat:"Category", allCats:"All categories",
+      posted:"Posted", lCat:"Category", allCats:"All categories", poa:"Price on request",
       sortDefault:"Sort: default", sortNew:"Newest first", sortOld:"Oldest first",
       sortLow:"Price: low to high", sortHigh:"Price: high to low", lSrc:"Source", lContact:"Contact",
       item:"item", items:"items", live:"updates live",
@@ -196,7 +197,7 @@ const T={
       search:"🔍 搜索物品…", all:"全部", btn:"EN",
       empty:"暂时没有在卖的东西，过几天再来看看～", noMatch:"没有找到符合的物品",
       contact:"想要？联系卖家：", ask:"详情请在群里问卖家",
-      posted:"发布于", lCat:"分类", allCats:"全部分类",
+      posted:"发布于", lCat:"分类", allCats:"全部分类", poa:"价格面议",
       sortDefault:"排序：默认", sortNew:"最新发布", sortOld:"最早发布",
       sortLow:"价格：低到高", sortHigh:"价格：高到低", lSrc:"来源", lContact:"联系方式",
       item:"件", items:"件", live:"实时更新",
@@ -355,7 +356,7 @@ function matchScore(item, q, expanded, allowFuzzy){
   const L = v => String(v||"").toLowerCase();
   const nameHay = [L(item.name), L(item._zh_name)].join(" ");
   const bodyHay = [L(item.desc), L(item._zh_desc)].join(" ");
-  const metaHay = [L(item.cat), L(item._zh_cat), L(item.src), L(item.contact)].join(" ");
+  const metaHay = [L(item.cat), L(item._zh_cat), srcList(item.src).join(" ").toLowerCase(), L(item.contact)].join(" ");
   /* 原词直接命中：名称 > 描述 > 分类 */
   if(nameHay.includes(q)) return 100;
   if(bodyHay.includes(q)) return 88;
@@ -371,6 +372,13 @@ function matchScore(item, q, expanded, allowFuzzy){
 
 const $=id=>document.getElementById(id);
 let ITEMS=[], curr=null;
+const hasPrice = v => v!==null && v!==undefined && v!=="" && !isNaN(Number(v));
+function priceHTML(v, big){
+  if(!hasPrice(v)) return `<span class="poa">${t("poa")}</span>`;
+  return `<small>£</small>${Number(v).toLocaleString()}`;
+}
+/* 来源可能是数组（多选） */
+const srcList = v => Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
 function srcClass(v){v=String(v).toLowerCase();return v.includes("whatsapp")?"wa":(v.includes("wechat")||v.includes("微信"))?"wx":""}
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
@@ -396,10 +404,10 @@ async function load(){
       return {
         name: f["Item name"]||"Untitled",
         desc: f["Description"]||"",
-        price: f["Price"]??"",
+        price: (f["Price"]===undefined||f["Price"]===null||f["Price"]==="") ? null : f["Price"],
         contact: f["Contact Information"]||"",
         cat: f["Category"]||"",
-        src: f["Source"]||"",
+        src: Array.isArray(f["Source"]) ? f["Source"] : (f["Source"] ? [f["Source"]] : []),
         date: f["Date Posted"]||"",
         photos: (f["Photos"]||[]).map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url})),
         icon:"📦"
@@ -425,8 +433,13 @@ function applySort(list){
   const num=v=>{const n=Number(v);return isNaN(n)?0:n};
   const day=v=>v?String(v):"";
   const a=[...list];
-  if(SORT==="priceAsc")  a.sort((x,y)=>num(x.price)-num(y.price));
-  if(SORT==="priceDesc") a.sort((x,y)=>num(y.price)-num(x.price));
+  const pk = (x,dir) => hasPrice(x.price) ? num(x.price) : (dir>0 ? Infinity : -Infinity); // 无价格永远排最后
+  if(SORT==="priceAsc")  a.sort((x,y)=>pk(x,1)-pk(y,1));
+  if(SORT==="priceDesc"){ a.sort((x,y)=>{
+      const hx=hasPrice(x.price), hy=hasPrice(y.price);
+      if(hx!==hy) return hx?-1:1;
+      return num(y.price)-num(x.price);
+    }); }
   if(SORT==="dateDesc")  a.sort((x,y)=>day(y.date).localeCompare(day(x.date)));
   if(SORT==="dateAsc")   a.sort((x,y)=>day(x.date).localeCompare(day(y.date)));
   return a;
@@ -474,8 +487,8 @@ function render(){
       <div class="cb">
         <div class="t">${esc(dv(i,"name"))}</div>
         ${i.desc?`<div class="d">${esc(dv(i,"desc"))}</div>`:""}
-        ${(i.cat||i.src)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span>`:""}${i.src?`<span class="tag ${srcClass(i.src)}">${esc(i.src)}</span>`:""}</div>`:""}
-        <div class="p"><small>£</small>${Number(i.price).toLocaleString()}</div>
+        ${(i.cat||srcList(i.src).length)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span>`:""}${srcList(i.src).map(sv=>`<span class="tag ${srcClass(sv)}">${esc(sv)}</span>`).join("")}</div>`:""}
+        <div class="p">${priceHTML(i.price)}</div>
         ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
         ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
       </div>
@@ -486,12 +499,12 @@ function render(){
 function openDetail(idx){
   curr=VIEW[idx];
   $("dTitle").textContent=dv(curr,"name");
-  $("dPrice").innerHTML=`<small>£</small>${Number(curr.price).toLocaleString()}`;
+  $("dPrice").innerHTML=priceHTML(curr.price);
   $("dName").textContent=dv(curr,"name");
   $("dDesc").textContent=dv(curr,"desc")||"";
   const rows=[];
   if(curr.cat)     rows.push([t("lCat"),     esc(dv(curr,"cat")), false]);
-  if(curr.src)     rows.push([t("lSrc"),     esc(curr.src),       false]);
+  if(srcList(curr.src).length) rows.push([t("lSrc"), esc(srcList(curr.src).join("、")), false]);
   if(curr.date)    rows.push([t("posted"),   esc(curr.date),      false]);
   if(curr.contact) rows.push([t("lContact"), esc(curr.contact),   true ]);
   $("dContact").innerHTML = rows.length
