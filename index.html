@@ -55,7 +55,7 @@
     flex-direction:column;height:100%;cursor:pointer;box-shadow:0 1px 4px rgba(40,25,40,.06)}
   .card:active{transform:scale(.98)}
   .ph{width:100%;height:100%;display:block;background:linear-gradient(135deg,#f0eaee,#e5dce2)}
-  .ph img{width:100%;height:100%;display:block;object-fit:cover}
+  .ph img{width:100%;height:100%;display:block;object-fit:contain}
   .ph .emoji{display:flex;align-items:center;justify-content:center;height:100%;font-size:44px}
   .pc{position:absolute}
   .cb{padding:8px 10px 10px;height:220px;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
@@ -65,6 +65,7 @@
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .tags{display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;
     gap:4px;margin-top:6px;height:42px;overflow:hidden}
+  .tag-break{flex-basis:100%;height:0}
   .tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:#eceaf0;color:#7a7583}
   .tag.wa{background:#d9f2d9;color:#1f6b34}
   .tag.wx{background:#d9e8f5;color:#1c5a8a}
@@ -535,7 +536,7 @@ function render(){
       <div class="cb">
         <div class="t">${esc(dv(i,"name"))}</div>
         ${i.desc?`<div class="d">${esc(dv(i,"desc"))}</div>`:""}
-        ${(i.cat||srcList(i.src).length)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span>`:""}${srcList(i.src).map(sv=>`<span class="tag ${srcClass(sv)}">${esc(sv)}</span>`).join("")}</div>`:""}
+        ${(i.cat||srcList(i.src).length)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span><span class="tag-break" aria-hidden="true"></span>`:""}${srcList(i.src).map(sv=>`<span class="tag ${srcClass(sv)}">${esc(sv)}</span>`).join("")}</div>`:""}
         <div class="p">${priceHTML(i.price)}</div>
         ${contactEntries(i).length?`<div class="contacts">${contactEntries(i).map(([channel,value])=>`<div class="c">💬 ${esc(channel)}: ${esc(value)}</div>`).join("")}</div>`:""}
         ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
