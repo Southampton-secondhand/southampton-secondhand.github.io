@@ -413,7 +413,7 @@ function contactEntries(item){
   }
   return entries;
 }
-const coverPhoto=item=>item.photos.find(p=>p.width&&p.height&&p.width/p.height<=2.5)||item.photos[0];
+const coverPhoto=item=>item.photos[item.photos.length-1];
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
 async function load(){
@@ -446,7 +446,7 @@ async function load(){
         src: Array.isArray(f["Source"]) ? f["Source"] : (f["Source"] ? [f["Source"]] : []),
         date: f["Date Posted"]||"",
         createdTime: rec.createdTime||"",
-        photos: (f["Photos"]||[]).map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url,width:p.width||0,height:p.height||0})),
+        photos: (f["Photos"]||[]).map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url})),
         icon:"📦"
       };
     });
