@@ -376,7 +376,8 @@ function matchScore(item, q, expanded, allowFuzzy){
   const L = v => String(v||"").toLowerCase();
   const nameHay = [L(item.name), L(item._zh_name)].join(" ");
   const bodyHay = [L(item.desc), L(item._zh_desc)].join(" ");
-  const metaHay = [L(item.cat), L(item._zh_cat), srcList(item.src).join(" ").toLowerCase(), L(item.contact)].join(" ");
+  const metaHay = [L(item.cat), L(item._zh_cat), srcList(item.src).join(" ").toLowerCase(),
+    L(item.whatsapp), L(item.wechat), L(item.contact)].join(" ");
   /* 原词直接命中：名称 > 描述 > 分类 */
   if(nameHay.includes(q)) return 100;
   if(bodyHay.includes(q)) return 88;
@@ -400,6 +401,17 @@ function priceHTML(v, big){
 /* 来源可能是数组（多选） */
 const srcList = v => Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
 function srcClass(v){v=String(v).toLowerCase();return v.includes("whatsapp")?"wa":(v.includes("wechat")||v.includes("微信"))?"wx":""}
+function contactEntries(item){
+  const entries=[];
+  if(item.whatsapp) entries.push(["WhatsApp",item.whatsapp]);
+  if(item.wechat) entries.push(["WeChat",item.wechat]);
+  if(!entries.length&&item.contact){
+    const sources=srcList(item.src);
+    entries.push([sources.length===1?sources[0]:t("lContact"),item.contact]);
+  }
+  return entries;
+}
+const contactSummary=item=>contactEntries(item).map(([channel,value])=>`${channel}: ${value}`).join(" · ");
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
 async function load(){
@@ -426,6 +438,8 @@ async function load(){
         desc: f["Description"]||"",
         price: (f["Price"]===undefined||f["Price"]===null||f["Price"]==="") ? null : f["Price"],
         contact: f["Contact Information"]||"",
+        whatsapp: f["WhatsApp Contact"]||"",
+        wechat: f["WeChat Contact"]||"",
         cat: f["Category"]||"",
         src: Array.isArray(f["Source"]) ? f["Source"] : (f["Source"] ? [f["Source"]] : []),
         date: f["Date Posted"]||"",
@@ -521,7 +535,7 @@ function render(){
         ${i.desc?`<div class="d">${esc(dv(i,"desc"))}</div>`:""}
         ${(i.cat||srcList(i.src).length)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span>`:""}${srcList(i.src).map(sv=>`<span class="tag ${srcClass(sv)}">${esc(sv)}</span>`).join("")}</div>`:""}
         <div class="p">${priceHTML(i.price)}</div>
-        ${i.contact?`<div class="c">💬 ${esc(i.contact)}</div>`:""}
+        ${contactSummary(i)?`<div class="c">💬 ${esc(contactSummary(i))}</div>`:""}
         ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
       </div>
     </div>`).join(""):`<div class="empty">${ITEMS.length?t("noMatch"):t("empty")}</div>`;
@@ -538,7 +552,7 @@ function openDetail(idx){
   if(curr.cat)     rows.push([t("lCat"),     esc(dv(curr,"cat")), false]);
   if(srcList(curr.src).length) rows.push([t("lSrc"), esc(srcList(curr.src).join("、")), false]);
   if(curr.date)    rows.push([t("posted"),   esc(curr.date),      false]);
-  if(curr.contact) rows.push([t("lContact"), esc(curr.contact),   true ]);
+  contactEntries(curr).forEach(([channel,value])=>rows.push([channel,esc(value),true]));
   $("dContact").innerHTML = rows.length
     ? rows.map(([k,v,hi])=>`<div class="drow"><span class="dk">${k}</span><span class="dvv${hi?" hi":""}">${v}</span></div>`).join("")
     : `<div class="drow">${t("ask")}</div>`;
