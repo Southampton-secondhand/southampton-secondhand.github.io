@@ -63,7 +63,8 @@
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .d{margin-top:4px;font-size:12px;line-height:1.5;color:var(--muted);height:36px;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .tags{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin-top:6px;height:42px;overflow:hidden}
+  .tags{display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;align-content:flex-start;
+    gap:4px;margin-top:6px;height:42px;overflow:hidden}
   .tag{font-size:10.5px;padding:2px 8px;border-radius:999px;background:#eceaf0;color:#7a7583}
   .tag.wa{background:#d9f2d9;color:#1f6b34}
   .tag.wx{background:#d9e8f5;color:#1c5a8a}
@@ -71,7 +72,8 @@
   .p{margin-top:6px;font-size:16px;font-weight:800;color:var(--price)}
   .p small{font-size:10.5px;font-weight:500}
   .p .poa,.dprice .poa{font-size:13px;font-weight:700;color:var(--muted)}
-  .c{margin-top:5px;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .contacts{margin-top:4px;height:26px;display:flex;flex-direction:column;gap:1px;overflow:hidden}
+  .c{font-size:11px;line-height:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .badge{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.5);color:#fff;
     font-size:10.5px;padding:2px 7px;border-radius:999px}
   .phwrap{position:relative;aspect-ratio:1/1;overflow:hidden;flex:none}
@@ -411,7 +413,6 @@ function contactEntries(item){
   }
   return entries;
 }
-const contactSummary=item=>contactEntries(item).map(([channel,value])=>`${channel}: ${value}`).join(" · ");
 const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 
 async function load(){
@@ -535,7 +536,7 @@ function render(){
         ${i.desc?`<div class="d">${esc(dv(i,"desc"))}</div>`:""}
         ${(i.cat||srcList(i.src).length)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span>`:""}${srcList(i.src).map(sv=>`<span class="tag ${srcClass(sv)}">${esc(sv)}</span>`).join("")}</div>`:""}
         <div class="p">${priceHTML(i.price)}</div>
-        ${contactSummary(i)?`<div class="c">💬 ${esc(contactSummary(i))}</div>`:""}
+        ${contactEntries(i).length?`<div class="contacts">${contactEntries(i).map(([channel,value])=>`<div class="c">💬 ${esc(channel)}: ${esc(value)}</div>`).join("")}</div>`:""}
         ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
       </div>
     </div>`).join(""):`<div class="empty">${ITEMS.length?t("noMatch"):t("empty")}</div>`;
