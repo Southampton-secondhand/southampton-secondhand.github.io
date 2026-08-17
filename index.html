@@ -48,11 +48,11 @@
 
   /* 瀑布流：手机2列，屏幕越大列越多 */
   .masonry{max-width:1080px;margin:10px auto 30px;padding:0 8px;
-    column-count:2;column-gap:8px}
-  @media(min-width:640px){.masonry{column-count:3}}
-  @media(min-width:900px){.masonry{column-count:4;column-gap:12px}}
-  .card{break-inside:avoid;background:var(--card);border-radius:12px;overflow:hidden;
-    margin-bottom:8px;cursor:pointer;box-shadow:0 1px 4px rgba(40,25,40,.06)}
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:start}
+  @media(min-width:640px){.masonry{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(min-width:900px){.masonry{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}}
+  .card{background:var(--card);border-radius:12px;overflow:hidden;
+    cursor:pointer;box-shadow:0 1px 4px rgba(40,25,40,.06)}
   .card:active{transform:scale(.98)}
   .ph{width:100%;display:block;background:linear-gradient(135deg,#f0eaee,#e5dce2)}
   .ph img{width:100%;display:block}
@@ -409,6 +409,7 @@ async function load(){
         cat: f["Category"]||"",
         src: Array.isArray(f["Source"]) ? f["Source"] : (f["Source"] ? [f["Source"]] : []),
         date: f["Date Posted"]||"",
+        createdTime: rec.createdTime||"",
         photos: (f["Photos"]||[]).map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url})),
         icon:"📦"
       };
@@ -432,16 +433,27 @@ function renderSort(){
 function applySort(list){
   const num=v=>{const n=Number(v);return isNaN(n)?0:n};
   const day=v=>v?String(v):"";
+  const time=v=>{const n=Date.parse(v);return Number.isNaN(n)?0:n};
   const a=[...list];
   const pk = (x,dir) => hasPrice(x.price) ? num(x.price) : (dir>0 ? Infinity : -Infinity); // 无价格永远排最后
+  const dateCmp=(x,y,dir)=>{
+    const dx=day(x.date), dy=day(y.date);
+    if(!dx||!dy){
+      if(dx===dy)return 0;
+      return dx?-1:1;
+    }
+    const byDay=dx.localeCompare(dy);
+    if(byDay)return byDay*dir;
+    return (time(x.createdTime)-time(y.createdTime))*dir;
+  };
   if(SORT==="priceAsc")  a.sort((x,y)=>pk(x,1)-pk(y,1));
   if(SORT==="priceDesc"){ a.sort((x,y)=>{
       const hx=hasPrice(x.price), hy=hasPrice(y.price);
       if(hx!==hy) return hx?-1:1;
       return num(y.price)-num(x.price);
     }); }
-  if(SORT==="dateDesc")  a.sort((x,y)=>day(y.date).localeCompare(day(x.date)));
-  if(SORT==="dateAsc")   a.sort((x,y)=>day(x.date).localeCompare(day(y.date)));
+  if(SORT==="dateDesc")  a.sort((x,y)=>dateCmp(x,y,-1));
+  if(SORT==="dateAsc")   a.sort((x,y)=>dateCmp(x,y,1));
   return a;
 }
 function renderChips(){
