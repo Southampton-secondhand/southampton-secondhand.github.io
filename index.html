@@ -396,6 +396,14 @@ function matchScore(item, q, expanded, allowFuzzy){
 
 const $=id=>document.getElementById(id);
 let ITEMS=[], curr=null;
+function shuffled(items){
+  const result=[...items];
+  for(let i=result.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [result[i],result[j]]=[result[j],result[i]];
+  }
+  return result;
+}
 const hasPrice = v => v!==null && v!==undefined && v!=="" && !isNaN(Number(v));
 function priceHTML(v, big){
   if(!hasPrice(v)) return `<span class="poa">${t("poa")}</span>`;
@@ -420,7 +428,7 @@ const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>
 async function load(){
   const configured = /^pat[A-Za-z0-9]+\.[A-Za-z0-9]+$/.test(CONFIG.token);
   if(!configured){
-    ITEMS=DEMO;
+    ITEMS=shuffled(DEMO);
     $("status").textContent="⚠️ Preview mode: showing demo data (Airtable not connected)";
     render(); return;
   }
@@ -434,7 +442,7 @@ async function load(){
       const j=await r.json();
       records.push(...j.records); offset=j.offset||"";
     }while(offset);
-    ITEMS=records.map(rec=>{
+    ITEMS=shuffled(records.map(rec=>{
       const f=rec.fields;
       return {
         name: f["Item name"]||"Untitled",
@@ -450,11 +458,11 @@ async function load(){
         photos: [...(f["Photos"]||[])].reverse().map(p=>({full:p.url,thumb:(p.thumbnails&&(p.thumbnails.large||p.thumbnails.full)||p).url})),
         icon:"📦"
       };
-    });
+    }));
     $("status").textContent="";
   }catch(e){
     $("status").textContent="⚠️ Failed to load ("+e.message+"), showing demo data";
-    ITEMS=DEMO;
+    ITEMS=shuffled(DEMO);
   }
   render();
 }
