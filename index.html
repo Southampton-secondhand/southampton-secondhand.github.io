@@ -445,7 +445,7 @@ async function load(){
     ITEMS=shuffled(records.map(rec=>{
       const f=rec.fields;
       return {
-        name: f["Item name"]||"Untitled",
+        name: f["Item name"]||"",
         desc: f["Description"]||"",
         price: (f["Price"]===undefined||f["Price"]===null||f["Price"]==="") ? null : f["Price"],
         contact: f["Contact Information"]||"",
