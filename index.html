@@ -227,53 +227,97 @@ const T={
 };
 const t=k=>T[LANG][k];
 
-const TCACHE={};           // 原文 -> 中文
-async function trOne(txt){
-  if(!txt) return txt;
-  if(TCACHE[txt]) return TCACHE[txt];
+const savedTranslations=(()=>{try{return JSON.parse(localStorage.getItem("marketTranslationCacheV2")||"{}")}catch(e){return {}}})();
+const TCACHE={zh:savedTranslations.zh||{},en:savedTranslations.en||{}};
+const HAS_CJK=/[\u3400-\u9fff]/;
+const CAT_PAIRS={
+  "Furniture":"家具",
+  "Home Appliances":"家用电器",
+  "Kitchenware":"厨房用品",
+  "Cleaning":"清洁用品",
+  "Electronics":"电子产品",
+  "Fitness":"健身器材",
+  "Home":"家居用品",
+  "Books & Study":"书籍与学习",
+  "Clothing":"服装",
+  "Sports & Fitness":"运动健身",
+  "Other":"其他"
+};
+const CAT_TO_EN=Object.fromEntries(Object.entries(CAT_PAIRS).map(([en,zh])=>[zh,en]));
+function saveTranslations(){
+  try{localStorage.setItem("marketTranslationCacheV2",JSON.stringify(TCACHE))}catch(e){}
+}
+function fixedCategory(txt,target){
+  const v=String(txt||"").trim();
+  if(!v)return v;
+  if(target==="zh"){
+    if(CAT_PAIRS[v])return CAT_PAIRS[v];
+    if(CAT_TO_EN[v])return v;
+  }else{
+    if(CAT_TO_EN[v])return CAT_TO_EN[v];
+    if(CAT_PAIRS[v])return v;
+  }
+  return "";
+}
+async function trOne(txt,target){
+  if(!txt)return txt;
+  const alreadyTarget=target==="zh"?HAS_CJK.test(txt):!HAS_CJK.test(txt);
+  if(alreadyTarget)return txt;
+  if(TCACHE[target][txt])return TCACHE[target][txt];
+  const targetCode=target==="zh"?"zh-CN":"en";
   try{
-    const r=await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=zh-CN&dt=t&q="+encodeURIComponent(txt));
+    const r=await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="+targetCode+"&dt=t&q="+encodeURIComponent(txt));
     const j=await r.json();
     const out=(j[0]||[]).map(x=>x[0]).join("");
-    if(out){TCACHE[txt]=out;return out}
+    if(out){TCACHE[target][txt]=out;saveTranslations();return out}
   }catch(e){}
   try{
-    const r=await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(txt)+"&langpair=en|zh-CN");
+    const langPair=target==="zh"?"en|zh-CN":"zh-CN|en";
+    const r=await fetch("https://api.mymemory.translated.net/get?q="+encodeURIComponent(txt)+"&langpair="+langPair);
     const j=await r.json();
     const out=j?.responseData?.translatedText;
-    if(out){TCACHE[txt]=out;return out}
+    if(out){TCACHE[target][txt]=out;saveTranslations();return out}
   }catch(e){}
   return txt;
 }
-async function translateItems(){
+async function translateItems(target){
   const jobs=[];
   ITEMS.forEach(i=>{
-    ["name","desc","cat"].forEach(k=>{
-      const v=i[k];
-      if(v && !/^[\d\s\p{P}]*$/u.test(v) && i["_zh_"+k]===undefined){
-        jobs.push(trOne(v).then(z=>{i["_zh_"+k]=z}));
+    ["name","desc"].forEach(k=>{
+      const v=i[k],dest="_"+target+"_"+k;
+      if(v&&!/^[\d\s\p{P}]*$/u.test(v)&&i[dest]===undefined){
+        jobs.push(trOne(v,target).then(z=>{i[dest]=z}));
       }
     });
+    if(i.cat){
+      const dest="_"+target+"_cat";
+      if(i[dest]===undefined){
+        const fixed=fixedCategory(i.cat,target);
+        if(fixed)i[dest]=fixed;
+        else jobs.push(trOne(i.cat,target).then(z=>{i[dest]=z}));
+      }
+    }
   });
-  if(jobs.length) await Promise.all(jobs);
+  if(jobs.length)await Promise.all(jobs);
 }
-/* 取显示值：中文模式优先用译文 */
-const dv=(i,k)=>(LANG==="zh" && i["_zh_"+k])?i["_zh_"+k]:i[k];
+/* 取显示值：名称、描述和分类随当前语言切换 */
+const dv=(i,k)=>i["_"+LANG+"_"+k]||i[k];
 
 async function toggleLang(){
-  const btn=$("langBtn");
-  if(LANG==="en"){
-    btn.classList.add("busy"); btn.disabled=true;
-    $("status").textContent=T.zh.translating;
-    await translateItems();
-    LANG="zh";
-    btn.classList.remove("busy"); btn.disabled=false;
+  const btn=$("langBtn"),target=LANG==="en"?"zh":"en";
+  btn.classList.add("busy");btn.disabled=true;
+  $("status").textContent=T[target].translating;
+  try{
+    await translateItems(target);
+    LANG=target;
+  }finally{
+    btn.classList.remove("busy");btn.disabled=false;
     $("status").textContent="";
-  }else{ LANG="en"; }
-  applyLang(); render();
+  }
+  applyLang();render();
 }
 function applyLang(){
-  document.documentElement.lang = LANG==="zh"?"zh-CN":"en";
+  document.documentElement.lang=LANG==="zh"?"zh-CN":"en";
   $("hTitle").textContent=t("title");
   $("hSub").textContent=t("sub");
   $("q").placeholder=t("search");
@@ -281,7 +325,6 @@ function applyLang(){
   document.title=LANG==="zh"?"南安普顿学生二手市集":"Southampton Student Marketplace";
   updateLightboxLabels();
 }
-
 
 /* ---------- 智能搜索：同义词词典 + 模糊匹配 ---------- */
 /* 每一组里的词互为近义词，中英混排。搜其中任意一个，组内其他词都能命中。
@@ -377,9 +420,9 @@ function hasTerm(hay, term){
 /* 单件商品的匹配得分：0 表示不匹配 */
 function matchScore(item, q, expanded, allowFuzzy){
   const L = v => String(v||"").toLowerCase();
-  const nameHay = [L(item.name), L(item._zh_name)].join(" ");
-  const bodyHay = [L(item.desc), L(item._zh_desc)].join(" ");
-  const metaHay = [L(item.cat), L(item._zh_cat), srcList(item.src).join(" ").toLowerCase(),
+  const nameHay = [L(item.name), L(item._zh_name), L(item._en_name)].join(" ");
+  const bodyHay = [L(item.desc), L(item._zh_desc), L(item._en_desc)].join(" ");
+  const metaHay = [L(item.cat), L(item._zh_cat), L(item._en_cat), srcList(item.src).join(" ").toLowerCase(),
     L(item.whatsapp), L(item.wechat), L(item.contact)].join(" ");
   /* 原词直接命中：名称 > 描述 > 分类 */
   if(nameHay.includes(q)) return 100;
@@ -459,6 +502,7 @@ async function load(){
         icon:"📦"
       };
     }));
+    await translateItems(LANG);
     $("status").textContent="";
   }catch(e){
     $("status").textContent="⚠️ Failed to load ("+e.message+"), showing demo data";
@@ -503,15 +547,15 @@ function applySort(list){
 }
 function renderChips(){
   const cats=[...new Set(ITEMS.map(i=>i.cat).filter(Boolean))].sort();
-  const zh=(v)=>LANG==="zh"?(ITEMS.find(i=>i.cat===v)?.["_zh_cat"]||v):v;
-  $("catLabel").textContent = CAT ? zh(CAT) : t("allCats");
-  $("catBtn").classList.toggle("active", !!CAT);
+  const labelForCat=v=>{
+    const item=ITEMS.find(i=>i.cat===v);
+    return item?dv(item,"cat"):v;
+  };
+  $("catLabel").textContent=CAT?labelForCat(CAT):t("allCats");
+  $("catBtn").classList.toggle("active",!!CAT);
   $("chips").innerHTML=cats.length
     ? [`<button class="chip ${CAT?"":"on"}" onclick="pickCat('')">${t("all")}</button>`]
-        .concat(cats.map(c=>{
-          const label=LANG==="zh"?(ITEMS.find(i=>i.cat===c)?.["_zh_cat"]||c):c;
-          return `<button class="chip ${CAT===c?"on":""}" onclick="pickCat('${esc(c).replace(/'/g,"\\'")}')">${esc(label)}</button>`;
-        })).join("")
+        .concat(cats.map(c=>`<button class="chip ${CAT===c?"on":""}" onclick="pickCat('${esc(c).replace(/'/g,"\\'")}')">${esc(labelForCat(c))}</button>`)).join("")
     : "";
 }
 function pickCat(c){ CAT=(CAT===c)?"":c; $("chips").classList.remove("open"); $("catBtn").classList.remove("open"); render(); }
