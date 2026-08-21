@@ -449,9 +449,16 @@ function shuffled(items){
   return result;
 }
 const hasPrice = v => v!==null && v!==undefined && v!=="" && !isNaN(Number(v));
-function priceHTML(v, big){
-  if(!hasPrice(v)) return "";
-  return `<small>£</small>${Number(v).toLocaleString()}`;
+const hasItemPrice = item => hasPrice(item.priceCny) || hasPrice(item.price);
+function itemPrice(item){
+  if(hasPrice(item.priceCny)) return {value:Number(item.priceCny),symbol:"¥",currency:"CNY"};
+  if(hasPrice(item.price)) return {value:Number(item.price),symbol:"£",currency:"GBP"};
+  return null;
+}
+function priceHTML(item){
+  const p=itemPrice(item);
+  if(!p) return "";
+  return `<small>${p.symbol}</small>${p.value.toLocaleString()}`;
 }
 /* 来源可能是数组（多选） */
 const srcList = v => Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
@@ -492,6 +499,7 @@ async function load(){
         name: f["Item name"]||"",
         desc: f["Description"]||"",
         price: (f["Price"]===undefined||f["Price"]===null||f["Price"]==="") ? null : f["Price"],
+        priceCny: (f["Price CNY"]===undefined||f["Price CNY"]===null||f["Price CNY"]==="") ? null : f["Price CNY"],
         contact: f["Contact Information"]||"",
         whatsapp: f["WhatsApp Contact"]||"",
         wechat: f["WeChat Contact"]||"",
@@ -525,7 +533,9 @@ function applySort(list){
   const day=v=>v?String(v):"";
   const time=v=>{const n=Date.parse(v);return Number.isNaN(n)?0:n};
   const a=[...list];
-  const pk = (x,dir) => hasPrice(x.price) ? num(x.price) : (dir>0 ? Infinity : -Infinity); // 无价格永远排最后
+  // 人民币商品仅在排序时按约 ¥10 = £1 归一化；页面仍显示卖家的原始币种和金额。
+  const sortPrice = x => hasPrice(x.price) ? num(x.price) : (hasPrice(x.priceCny) ? num(x.priceCny)/10 : null);
+  const pk = (x,dir) => sortPrice(x)!==null ? sortPrice(x) : (dir>0 ? Infinity : -Infinity); // 无价格永远排最后
   const dateCmp=(x,y,dir)=>{
     const dx=day(x.date), dy=day(y.date);
     if(!dx||!dy){
@@ -538,9 +548,9 @@ function applySort(list){
   };
   if(SORT==="priceAsc")  a.sort((x,y)=>pk(x,1)-pk(y,1));
   if(SORT==="priceDesc"){ a.sort((x,y)=>{
-      const hx=hasPrice(x.price), hy=hasPrice(y.price);
+      const hx=sortPrice(x)!==null, hy=sortPrice(y)!==null;
       if(hx!==hy) return hx?-1:1;
-      return num(y.price)-num(x.price);
+      return (sortPrice(y)||0)-(sortPrice(x)||0);
     }); }
   if(SORT==="dateDesc")  a.sort((x,y)=>dateCmp(x,y,-1));
   if(SORT==="dateAsc")   a.sort((x,y)=>dateCmp(x,y,1));
@@ -590,7 +600,7 @@ function render(){
         <div class="t">${esc(dv(i,"name"))}</div>
         ${i.desc?`<div class="d">${esc(dv(i,"desc"))}</div>`:""}
         ${(i.cat||srcList(i.src).length)?`<div class="tags">${i.cat?`<span class="tag">${esc(dv(i,"cat"))}</span><span class="tag-break" aria-hidden="true"></span>`:""}${srcList(i.src).map(sv=>`<span class="tag ${srcClass(sv)}">${esc(sv)}</span>`).join("")}</div>`:""}
-        ${hasPrice(i.price)?`<div class="p">${priceHTML(i.price)}</div>`:""}
+        ${hasItemPrice(i)?`<div class="p">${priceHTML(i)}</div>`:""}
         ${contactEntries(i).length?`<div class="contacts">${contactEntries(i).map(([channel,value])=>`<div class="c">💬 ${esc(channel)}: ${esc(value)}</div>`).join("")}</div>`:""}
         ${i.date?`<div class="dt2">📅 ${esc(i.date)}</div>`:""}
       </div>
@@ -601,8 +611,8 @@ function render(){
 function openDetail(idx){
   curr=VIEW[idx];
   $("dTitle").textContent=dv(curr,"name");
-  $("dPrice").style.display=hasPrice(curr.price)?"":"none";
-  $("dPrice").innerHTML=priceHTML(curr.price);
+  $("dPrice").style.display=hasItemPrice(curr)?"":"none";
+  $("dPrice").innerHTML=priceHTML(curr);
   $("dName").textContent=dv(curr,"name");
   $("dDesc").textContent=dv(curr,"desc")||"";
   const rows=[];
