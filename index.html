@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Southampton Student Marketplace</title>
+<title>南安普顿学生二手市集</title>
 <style>
   :root{
     --brand:#7A3B5E; --price:#e0344a; --bg:#f5f4f6; --card:#fff;
@@ -136,10 +136,10 @@
 <body>
 
 <header><div class="wrap">
-  <div class="htxt"><h1 id="hTitle">🛒 Southampton Student Marketplace</h1><span id="hSub">Second-hand finds from our groups</span></div>
-  <button class="lang" id="langBtn" onclick="toggleLang()">中文</button>
+  <div class="htxt"><h1 id="hTitle">🛒 南安普顿学生二手市集</h1><span id="hSub">来自群里的二手好物</span></div>
+  <button class="lang" id="langBtn" onclick="toggleLang()">EN</button>
 </div></header>
-<div class="sbar"><input id="q" type="search" placeholder="🔍 Search items…" autocomplete="off"></div>
+<div class="sbar"><input id="q" type="search" placeholder="🔍 搜索物品…" autocomplete="off"></div>
 <div class="catbar">
   <button class="catbtn" id="catBtn" onclick="toggleCats()">
     <span id="catLabel"></span><span class="caret">▾</span>
@@ -203,7 +203,8 @@ const DEMO = [
 ];
 
 /* ---------- 语言 / Language ---------- */
-let LANG="en";
+const savedLang=(()=>{try{return localStorage.getItem("marketLang")}catch(e){return null}})();
+let LANG=savedLang==="en"?"en":"zh";
 const T={
   en:{title:"🛒 Southampton Student Marketplace", sub:"Second-hand finds from our groups",
       search:"🔍 Search items…", all:"All", btn:"中文",
@@ -309,6 +310,7 @@ async function toggleLang(){
   try{
     await translateItems(target);
     LANG=target;
+    try{localStorage.setItem("marketLang",LANG)}catch(e){}
   }finally{
     btn.classList.remove("busy");btn.disabled=false;
     $("status").textContent="";
@@ -701,6 +703,7 @@ document.addEventListener("keydown",e=>{
 });
 
 $("q").addEventListener("input",render);
+applyLang();
 load();
 </script>
 </body>
